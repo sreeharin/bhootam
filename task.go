@@ -1,6 +1,7 @@
 package bhootam
 
 type Args []any
+type Func func(Args) Value
 
 type Value struct {
 	Value any
@@ -8,7 +9,7 @@ type Value struct {
 }
 
 type Task struct {
-	Function func(Args) Value
+	Function Func
 	Args     Args
 }
 
