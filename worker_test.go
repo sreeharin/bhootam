@@ -18,7 +18,7 @@ func TestStartWorker(t *testing.T) {
 			t.Error("Incorrect status: Expected: Completed, Got: ", val.Status)
 		}
 
-		if val.Value.Value.(int) != 13 {
+		if val.Outcome.Value.(int) != 13 {
 			t.Error("Incorrect value: Expected: 13, Got: ", val.Value)
 		}
 

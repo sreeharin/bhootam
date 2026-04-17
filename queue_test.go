@@ -2,8 +2,8 @@ package bhootam
 
 import "testing"
 
-func sampleTestTask(args Args) Value {
-	return Value{}
+func sampleTestTask(args Args) Outcome {
+	return Outcome{}
 }
 
 func TestAddTask(t *testing.T) {
