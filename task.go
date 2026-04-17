@@ -1,9 +1,9 @@
 package bhootam
 
 type Args []any
-type Func func(Args) Value
+type Func func(Args) Outcome
 
-type Value struct {
+type Outcome struct {
 	Value any
 	Err   error
 }
@@ -13,6 +13,6 @@ type Task struct {
 	Args     Args
 }
 
-func (t Task) Run() Value {
+func (t Task) Run() Outcome {
 	return t.Function(t.Args)
 }

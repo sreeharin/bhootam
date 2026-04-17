@@ -11,7 +11,6 @@ func TestStartWorker(t *testing.T) {
 	task := Task{Function: sampleSumTask, Args: Args{6, 7}}
 	id := q.AddTask(task)
 
-
 	if val, err := store.Get(id); err != nil {
 		t.Errorf("Job %s not in state", id)
 	} else {
