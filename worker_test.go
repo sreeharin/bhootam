@@ -6,7 +6,7 @@ func TestStartWorker(t *testing.T) {
 	q := NewQueue()
 	store := NewStore()
 
-	StartWorker()
+	StartWorker(q, store)
 
 	task := Task{Function: sampleSumTask, Args: Args{6, 7}}
 	id := q.AddTask(task)
@@ -18,10 +18,9 @@ func TestStartWorker(t *testing.T) {
 			t.Error("Incorrect status: Expected: Completed, Got: ", val.Status)
 		}
 
-		if val.Outcome.Value.(int) != 13 {
-			t.Error("Incorrect value: Expected: 13, Got: ", val.Value)
+		expected := 13
+		if val.Outcome.Value.(int) != expected {
+			t.Errorf("Incorrect value: Expected: %d, Got: %d", expected, val.Value)
 		}
-
 	}
-
 }
