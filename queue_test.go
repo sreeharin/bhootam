@@ -2,14 +2,14 @@ package bhootam
 
 import "testing"
 
-func sampleTask(args Args) Value {
+func sampleTestTask(args Args) Value {
 	return Value{}
 }
 
 func TestAddTask(t *testing.T) {
 	q := NewQueue()
 
-	go func() { q.AddTask(sampleTask) }()
+	go func() { q.AddTask(Task{Function: sampleTestTask, Args: Args{}}) }()
 
 	job := <-q.jobs
 	if job.id == "" {
