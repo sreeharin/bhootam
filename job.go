@@ -1,11 +1,11 @@
 package bhootam
 
-type JobState int
+type JobState string
 
 const (
-	JobCompleted JobState = iota
-	JobRunning
-	JobError
+	JobCompleted JobState = "completed"
+	JobRunning   JobState = "running"
+	JobError     JobState = "error"
 )
 
 type Job struct {
