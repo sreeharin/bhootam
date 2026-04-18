@@ -2,6 +2,7 @@ package bhootam
 
 func worker(queue *Queue, store *Store) {
 	for job := range queue.jobs {
+		job.ack <- struct{}{}
 		store.Set(job.id, Result{Status: JobRunning})
 		outcome := job.task.Run()
 		store.Set(job.id, Result{Outcome: outcome, Status: JobCompleted})

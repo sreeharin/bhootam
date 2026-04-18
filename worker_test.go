@@ -1,15 +1,29 @@
 package bhootam
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
-func TestStartWorker(t *testing.T) {
-	q := NewQueue()
-	store := NewStore()
+var (
+	q     *Queue
+	store *Store
+)
+
+func TestMain(m *testing.M) {
+	q = NewQueue()
+	store = NewStore()
 
 	StartWorker(q, store)
 
+	exitCode := m.Run()
+	os.Exit(exitCode)
+}
+
+func TestStartWorker(t *testing.T) {
 	task := Task{Function: sampleSumTask, Args: Args{6, 7}}
-	id := q.AddTask(task)
+	id, ack := q.AddTask(task)
+	<-ack
 
 	if val, err := store.Get(id); err != nil {
 		t.Errorf("Job %s not in state", id)
