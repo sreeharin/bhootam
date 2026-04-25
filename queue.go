@@ -1,6 +1,10 @@
 package bhootam
 
-import "github.com/google/uuid"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 type Queue struct {
 	jobs chan Job
@@ -12,11 +16,12 @@ func NewQueue() *Queue {
 
 // AddTask enqueues Task to the queue (Job channel)
 // a UUID is generated per unique job
-func (q *Queue) AddTask(task Task) (string, <-chan struct{}) {
+func (q *Queue) AddTask(ctx context.Context, task Task) (string, <-chan struct{}, <-chan struct{}) {
 	id := uuid.NewString()
 	ack := make(chan struct{}, 1)
+	done := make(chan struct{}, 1)
 
-	q.jobs <- Job{id, task, ack}
+	q.jobs <- Job{ctx, id, task, ack, done}
 
-	return id, ack
+	return id, ack, done
 }
