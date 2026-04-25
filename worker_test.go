@@ -1,8 +1,10 @@
 package bhootam
 
 import (
+	"context"
 	"os"
 	"testing"
+	"time"
 )
 
 var (
@@ -20,44 +22,52 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestStartWorker(t *testing.T) {
-	task := Task{Function: sampleSumTask, Args: Args{6, 7}}
-	id, ack := q.AddTask(task)
-	<-ack
-
-	if val, err := store.Get(id); err != nil {
-		t.Errorf("Job %s not in state", id)
-	} else {
-		if val.Status != JobCompleted {
-			t.Error("Incorrect status: Expected: Completed, Got: ", val.Status)
-		}
-
-		expected := 13
-		if val.Value.(int) != expected {
-			t.Errorf("Incorrect value: Expected: %d, Got: %d", expected, val.Value)
-		}
-	}
+func sampleDivideTask(args Args) Outcome {
+	res := args[0].(int) / args[1].(int)
+	return Outcome{Value: res}
 }
 
-// Checks if handleJob recovers from panics
-// In this test, we intentionaly divide an integer be zero to create a panic
-// We check if the situation is handled properly
-func TestWorkerhandleJobError(t *testing.T) {
-	sampleFailingTask := func(args Args) Outcome {
-		res := args[0].(int) / args[1].(int)
-		return Outcome{Value: res}
+func sampleSlowTask(args Args) Outcome {
+	for range 3 {
+		time.Sleep(3 * time.Second)
+	}
+	return Outcome{}
+}
+
+func TestHandleJob(t *testing.T) {
+	tests := []struct {
+		name           string
+		function       Func
+		args           Args
+		expectedStatus JobState
+		expectedValue  any
+	}{
+		{name: "add job to task and get result", function: sampleSumTask, args: Args{6, 7}, expectedStatus: JobCompleted, expectedValue: 13},
+		{name: "check if worker recovers from panic", function: sampleDivideTask, args: Args{10, 0}, expectedStatus: JobError},
+		{name: "timeout is respected", function: sampleSlowTask, expectedStatus: JobTimeOut},
 	}
 
-	task := Task{Function: sampleFailingTask, Args: Args{10, 0}}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			task := Task{Function: tt.function, Args: tt.args}
 
-	id, ack := q.AddTask(task)
-	<-ack
+			ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+			defer cancel()
 
-	if val, err := store.Get(id); err != nil {
-		t.Errorf("Job %s not in state", id)
-	} else {
-		if val.Status != JobError {
-			t.Errorf("Incorrect job status: Expected: %s Got: %s", JobError, val.Status)
-		}
+			id, _, done := q.AddTask(ctx, task)
+			<-done
+
+			if res, err := store.Get(id); err != nil {
+				t.Errorf("Job id: %s not in Store", id)
+			} else {
+				if tt.expectedStatus != res.Status {
+					t.Errorf("Wrong status. Expected: %s, Got: %s", tt.expectedStatus, res.Status)
+				}
+
+				if tt.expectedValue != res.Value {
+					t.Errorf("Wrong value. Expected: %v Got: %v", tt.expectedValue, res.Value)
+				}
+			}
+		})
 	}
 }
