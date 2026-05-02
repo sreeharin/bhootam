@@ -2,13 +2,15 @@ package bhootam
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type Queue struct {
-	jobs chan Job
+	jobs  chan Job
+	count atomic.Int32
 }
 
 func NewQueue() *Queue {
@@ -31,6 +33,8 @@ func (q *Queue) AddTask(task *Task) (string, <-chan struct{}, <-chan struct{}) {
 
 	ctx, cancel := context.WithTimeout(context.TODO(), task.Timeout)
 	q.jobs <- Job{ctx, cancel, id, task, ack, done}
+
+	q.count.Add(1)
 
 	return id, ack, done
 }

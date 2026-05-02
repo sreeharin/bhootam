@@ -1,6 +1,9 @@
 package bhootam
 
-import "time"
+import (
+	"sync/atomic"
+	"time"
+)
 
 type Args []any
 type Func func(Args) Outcome
@@ -18,12 +21,19 @@ type Task struct {
 	Function Func
 	Args     Args
 	Timeout  time.Duration
-	Retry    int
+	Retry    atomic.Int32
 }
 
 // Run executes the function with the provided arguments
-func (t Task) Run() Outcome {
+func (t *Task) Run() Outcome {
+	// res := make(chan Outcome, 1)
+	// res <- t.Function(t.Args)
 	return t.Function(t.Args)
+	// return res
+}
+
+func (t *Task) DecrementRetry() {
+	t.Retry.Add(-1)
 }
 
 func NewTask(function Func, options ...option) *Task {
@@ -38,22 +48,22 @@ func NewTask(function Func, options ...option) *Task {
 	return task
 }
 
-func withArgs(args Args) func(*Task) {
+func withArgs(args Args) option {
 	return func(t *Task) {
 		t.Args = args
 	}
 }
 
-func withTimeout(timeout time.Duration) func(*Task) {
+func withTimeout(timeout time.Duration) option {
 	return func(t *Task) {
 		t.Timeout = timeout
 	}
 }
 
-func withRetries(retry int) func(*Task) {
+func withRetry(count int32) option {
 	return func(t *Task) {
-		if retry > 0 {
-			t.Retry = retry
+		if count > 0 {
+			t.Retry.Add(count)
 		}
 	}
 }

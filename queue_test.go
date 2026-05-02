@@ -10,8 +10,6 @@ func sampleTestTask(args Args) Outcome {
 
 func TestAddTask(t *testing.T) {
 	q := NewQueue()
-	// ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
-	// defer cancel()
 
 	task := NewTask(sampleTestTask)
 

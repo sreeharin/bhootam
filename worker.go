@@ -2,7 +2,7 @@ package bhootam
 
 // handleJob is the job runner
 // it's called by the worker goroutine
-func handleJob(store *Store, job Job) {
+func handleJob(queue *Queue, store *Store, job Job) {
 	defer job.ctxCancel()
 
 	// Acknowledge a worker has picked up the job
@@ -13,6 +13,8 @@ func handleJob(store *Store, job Job) {
 		outcome Outcome
 		status  JobState
 	)
+
+	outcomeCh := make(chan Outcome, 1)
 
 	taskComplete := make(chan struct{})
 	taskError := make(chan struct{})
@@ -26,8 +28,7 @@ func handleJob(store *Store, job Job) {
 			}
 		}()
 
-		outcome = job.task.Run()
-
+		outcomeCh <- job.task.Run()
 		taskComplete <- struct{}{}
 	}()
 
@@ -38,10 +39,12 @@ loop:
 		case <-job.ctx.Done():
 			// If the timeout is reached
 			status = JobTimeOut
+			outcome = <-outcomeCh
 			break loop
 		case <-taskComplete:
 			// Everything went smoothly
 			status = JobCompleted
+			outcome = <-outcomeCh
 			break loop
 		case <-taskError:
 			// Signalled from defer func
@@ -56,13 +59,26 @@ loop:
 		status = JobError
 	}
 
+	// Handle task retry
+	if status == JobError && job.task.Retry.Load() > 0 {
+		newJob := job
+		newJob.task.DecrementRetry()
+
+		queue.jobs <- newJob
+
+		queue.count.Add(1)
+		return
+	}
+
 	store.Set(job.id, Result{Outcome: outcome, Status: status})
 	job.done <- struct{}{}
 }
 
 func worker(queue *Queue, store *Store) {
 	for job := range queue.jobs {
-		handleJob(store, job)
+		queue.count.Add(-1)
+
+		handleJob(queue, store, job)
 	}
 }
 
