@@ -9,6 +9,7 @@ const (
 	JobRunning   JobState = "running"
 	JobError     JobState = "error"
 	JobTimeOut   JobState = "timeout"
+	JobRetry     JobState = "retry"
 )
 
 type Job struct {

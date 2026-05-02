@@ -34,6 +34,10 @@ func sampleSlowTask(args Args) Outcome {
 	return Outcome{}
 }
 
+func sampleRetryTask(args Args) Outcome {
+	return Outcome{}
+}
+
 func TestHandleJob(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -70,4 +74,49 @@ func TestHandleJob(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandleRetry(t *testing.T) {
+	task := Task{Function: sampleRetryTask, Args: Args{}}
+	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	defer cancel()
+
+	id, ack, done := q.AddTask(ctx, task)
+	<-ack
+
+	for {
+		select {
+		case <-done:
+			if res, _ := store.Get(id); res.Status != JobCompleted {
+				t.Errorf("Wrong status. Expected: %s, Got: %s", JobCompleted, res.Status)
+			}
+			return
+		default:
+			if res, err := store.Get(id); err == nil {
+				if res.Status != JobRetry {
+					t.Errorf("Wrong status. Expected: %s, Got: %s", JobRetry, res.Status)
+				}
+			}
+		}
+	}
+
+	// <-ack
+
+	// retries := 3
+
+	// for idx := range retries + 1 {
+	// 	if res, err := store.Get(id); err != nil {
+	// 		t.Errorf("Job id: %s not in Store", id)
+	// 	} else {
+	// 		if idx < 3 {
+	// 			if res.Status != JobRetry {
+	// 				t.Errorf("Wrong status. Expected: %s, Got: %s", JobRetry, res.Status)
+	// 			}
+	// 		} else {
+	// 			if res.Status != JobCompleted {
+	// 				t.Errorf("Wrong status. Expected: %s, Got: %s", JobCompleted, res.Status)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
