@@ -1,9 +1,7 @@
 package bhootam
 
 import (
-	"context"
 	"testing"
-	"time"
 )
 
 func sampleTestTask(args Args) Outcome {
@@ -12,10 +10,14 @@ func sampleTestTask(args Args) Outcome {
 
 func TestAddTask(t *testing.T) {
 	q := NewQueue()
-	ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(context.TODO(), 1*time.Second)
+	// defer cancel()
 
-	go func() { q.AddTask(ctx, Task{Function: sampleTestTask, Args: Args{}}) }()
+	task := NewTask(sampleTestTask)
+
+	go func() {
+		q.AddTask(task)
+	}()
 
 	job := <-q.jobs
 	if job.id == "" {

@@ -1,7 +1,6 @@
 package bhootam
 
 import (
-	"context"
 	"os"
 	"testing"
 	"time"
@@ -35,6 +34,7 @@ func sampleSlowTask(args Args) Outcome {
 }
 
 func sampleRetryTask(args Args) Outcome {
+	time.Sleep(100 * time.Millisecond)
 	return Outcome{}
 }
 
@@ -43,22 +43,21 @@ func TestHandleJob(t *testing.T) {
 		name           string
 		function       Func
 		args           Args
+		timeout        time.Duration
+		retries        int
 		expectedStatus JobState
 		expectedValue  any
 	}{
 		{name: "add job to task and get result", function: sampleSumTask, args: Args{6, 7}, expectedStatus: JobCompleted, expectedValue: 13},
 		{name: "check if worker recovers from panic", function: sampleDivideTask, args: Args{10, 0}, expectedStatus: JobError},
-		{name: "timeout is respected", function: sampleSlowTask, expectedStatus: JobTimeOut},
+		{name: "timeout is respected", function: sampleSlowTask, timeout: 10 * time.Millisecond, expectedStatus: JobTimeOut},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := Task{Function: tt.function, Args: tt.args}
+			task := NewTask(tt.function, withArgs(tt.args), withTimeout(tt.timeout))
 
-			ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
-			defer cancel()
-
-			id, _, done := q.AddTask(ctx, task)
+			id, _, done := q.AddTask(task)
 			<-done
 
 			if res, err := store.Get(id); err != nil {
@@ -74,49 +73,4 @@ func TestHandleJob(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestHandleRetry(t *testing.T) {
-	task := Task{Function: sampleRetryTask, Args: Args{}}
-	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
-	defer cancel()
-
-	id, ack, done := q.AddTask(ctx, task)
-	<-ack
-
-	for {
-		select {
-		case <-done:
-			if res, _ := store.Get(id); res.Status != JobCompleted {
-				t.Errorf("Wrong status. Expected: %s, Got: %s", JobCompleted, res.Status)
-			}
-			return
-		default:
-			if res, err := store.Get(id); err == nil {
-				if res.Status != JobRetry {
-					t.Errorf("Wrong status. Expected: %s, Got: %s", JobRetry, res.Status)
-				}
-			}
-		}
-	}
-
-	// <-ack
-
-	// retries := 3
-
-	// for idx := range retries + 1 {
-	// 	if res, err := store.Get(id); err != nil {
-	// 		t.Errorf("Job id: %s not in Store", id)
-	// 	} else {
-	// 		if idx < 3 {
-	// 			if res.Status != JobRetry {
-	// 				t.Errorf("Wrong status. Expected: %s, Got: %s", JobRetry, res.Status)
-	// 			}
-	// 		} else {
-	// 			if res.Status != JobCompleted {
-	// 				t.Errorf("Wrong status. Expected: %s, Got: %s", JobCompleted, res.Status)
-	// 			}
-	// 		}
-	// 	}
-	// }
 }

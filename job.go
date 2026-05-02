@@ -13,9 +13,10 @@ const (
 )
 
 type Job struct {
-	ctx  context.Context
-	id   string
-	task Task
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	id        string
+	task      *Task
 
 	// ack is the acknowledgment provided by the worker
 	// to inform that a worker has picken up the task

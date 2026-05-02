@@ -3,6 +3,8 @@ package bhootam
 // handleJob is the job runner
 // it's called by the worker goroutine
 func handleJob(store *Store, job Job) {
+	defer job.ctxCancel()
+
 	// Acknowledge a worker has picked up the job
 	job.ack <- struct{}{}
 	store.Set(job.id, Result{Status: JobRunning})

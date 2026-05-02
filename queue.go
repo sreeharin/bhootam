@@ -2,6 +2,7 @@ package bhootam
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -16,12 +17,20 @@ func NewQueue() *Queue {
 
 // AddTask enqueues Task to the queue (Job channel)
 // a UUID is generated per unique job
-func (q *Queue) AddTask(ctx context.Context, task Task) (string, <-chan struct{}, <-chan struct{}) {
+func (q *Queue) AddTask(task *Task) (string, <-chan struct{}, <-chan struct{}) {
 	id := uuid.NewString()
 	ack := make(chan struct{}, 1)
 	done := make(chan struct{}, 1)
 
-	q.jobs <- Job{ctx, id, task, ack, done}
+	DEFAULT_TIMEOUT := 1 * time.Minute
+
+	// Set default timeout if no timeout was set
+	if task.Timeout == 0 {
+		task.Timeout = DEFAULT_TIMEOUT
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), task.Timeout)
+	q.jobs <- Job{ctx, cancel, id, task, ack, done}
 
 	return id, ack, done
 }

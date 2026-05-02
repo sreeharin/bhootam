@@ -4,7 +4,7 @@ import "time"
 
 type Args []any
 type Func func(Args) Outcome
-type option func() func(*Task)
+type option func(*Task)
 
 // Outcome is the return value we expect from a function
 type Outcome struct {
