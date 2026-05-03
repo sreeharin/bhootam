@@ -1,6 +1,8 @@
 package bhootam
 
-import "context"
+import (
+	"context"
+)
 
 type JobState string
 
@@ -24,4 +26,6 @@ type Job struct {
 
 	// done is used to infrom that the task has completed running
 	done chan struct{}
+
+	// mu sync.Mutex
 }

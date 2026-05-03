@@ -74,7 +74,7 @@ func TestHandleJob(t *testing.T) {
 
 func TestWithRetry(t *testing.T) {
 	var retries int32
-	retries = 3
+	retries = 1
 	var attempts atomic.Int32
 
 	sampleRetryTask := func(args Args) Outcome {

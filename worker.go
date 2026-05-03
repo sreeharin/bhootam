@@ -1,8 +1,21 @@
 package bhootam
 
+import (
+	"context"
+	"fmt"
+)
+
 // handleJob is the job runner
 // it's called by the worker goroutine
-func handleJob(queue *Queue, store *Store, job Job) {
+func handleJob(queue *Queue, store *Store, job *Job) {
+	if !store.Acquire(job.id) {
+		return
+	}
+
+	defer store.Release(job.id)
+
+	fmt.Println("attempt ", job.task.Retry.Load())
+
 	defer job.ctxCancel()
 
 	// Acknowledge a worker has picked up the job
@@ -15,9 +28,7 @@ func handleJob(queue *Queue, store *Store, job Job) {
 	)
 
 	outcomeCh := make(chan Outcome, 1)
-
-	taskComplete := make(chan struct{})
-	taskError := make(chan struct{})
+	taskError := make(chan struct{}, 1)
 
 	// Run the task in a goroutine
 	go func() {
@@ -29,7 +40,6 @@ func handleJob(queue *Queue, store *Store, job Job) {
 		}()
 
 		outcomeCh <- job.task.Run()
-		taskComplete <- struct{}{}
 	}()
 
 	// Helps handle the timeout funtionality
@@ -39,12 +49,10 @@ loop:
 		case <-job.ctx.Done():
 			// If the timeout is reached
 			status = JobTimeOut
-			outcome = <-outcomeCh
 			break loop
-		case <-taskComplete:
+		case outcome = <-outcomeCh:
 			// Everything went smoothly
 			status = JobCompleted
-			outcome = <-outcomeCh
 			break loop
 		case <-taskError:
 			// Signalled from defer func
@@ -61,10 +69,19 @@ loop:
 
 	// Handle task retry
 	if status == JobError && job.task.Retry.Load() > 0 {
-		newJob := job
-		newJob.task.DecrementRetry()
+		job.task.DecrementRetry()
 
-		queue.jobs <- newJob
+		ctx, cancel := context.WithTimeout(context.TODO(), job.task.Timeout)
+
+		newJob := Job{
+			ctx:       ctx,
+			ctxCancel: cancel,
+			id:        job.id,
+			task:      job.task,
+			done:      job.done,
+		}
+
+		queue.jobs <- &newJob
 
 		queue.count.Add(1)
 		return

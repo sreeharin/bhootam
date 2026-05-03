@@ -1,6 +1,7 @@
 package bhootam
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -26,6 +27,7 @@ type Task struct {
 
 // Run executes the function with the provided arguments
 func (t *Task) Run() Outcome {
+	fmt.Println("Running task")
 	// res := make(chan Outcome, 1)
 	// res <- t.Function(t.Args)
 	return t.Function(t.Args)

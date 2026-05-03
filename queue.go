@@ -9,12 +9,12 @@ import (
 )
 
 type Queue struct {
-	jobs  chan Job
+	jobs  chan *Job
 	count atomic.Int32
 }
 
 func NewQueue() *Queue {
-	return &Queue{jobs: make(chan Job)}
+	return &Queue{jobs: make(chan *Job)}
 }
 
 // AddTask enqueues Task to the queue (Job channel)
@@ -32,9 +32,13 @@ func (q *Queue) AddTask(task *Task) (string, <-chan struct{}, <-chan struct{}) {
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), task.Timeout)
-	q.jobs <- Job{ctx, cancel, id, task, ack, done}
+	q.jobs <- &Job{ctx: ctx, ctxCancel: cancel, id: id, task: task, ack: ack, done: done}
 
 	q.count.Add(1)
 
 	return id, ack, done
 }
+
+// func (q *Queue) Enqueue (job *Job) {
+// 	if
+// }
