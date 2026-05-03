@@ -8,10 +8,11 @@ func sampleSumTask(args Args) Outcome {
 }
 
 func TestRun(t *testing.T) {
-	task := Task{Function: sampleSumTask, Args: Args{5, 5}}
-	ret := task.Run()
+	task := Task{function: sampleSumTask, args: Args{5, 5}}
+	res := task.Run()
+	// res := <-outcome
 
-	if ret.Value.(int) != 10 {
+	if res.Value.(int) != 10 {
 		t.Error("Incorrect value")
 	}
 }

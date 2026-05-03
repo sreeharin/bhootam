@@ -11,8 +11,10 @@ type Result struct {
 }
 
 type Store struct {
+	// store the return value from function
 	data map[string]Result
-	mu   sync.Mutex
+
+	mu sync.Mutex
 }
 
 func NewStore() *Store {

@@ -1,10 +1,19 @@
 package bhootam
 
+import "context"
+
 // handleJob is the job runner
 // it's called by the worker goroutine
-func handleJob(store *Store, job Job) {
-	// Acknowledge a worker has picked up the job
-	job.ack <- struct{}{}
+func handleJob(id int, queue *Queue, store *Store, job *Job) {
+	defer job.ctxCancel()
+
+	// acknowledge a worker has picked up the job
+	// for retries it doesn't create an ack
+	// might change in the future
+	if !job.retry {
+		job.ack <- struct{}{}
+		close(job.ack)
+	}
 	store.Set(job.id, Result{Status: JobRunning})
 
 	var (
@@ -12,8 +21,8 @@ func handleJob(store *Store, job Job) {
 		status  JobState
 	)
 
-	taskComplete := make(chan struct{})
-	taskError := make(chan struct{})
+	outcomeCh := make(chan Outcome, 1)
+	taskError := make(chan struct{}, 1)
 
 	// Run the task in a goroutine
 	go func() {
@@ -24,12 +33,11 @@ func handleJob(store *Store, job Job) {
 			}
 		}()
 
-		outcome = job.task.Run()
-
-		taskComplete <- struct{}{}
+		outcomeCh <- job.task.Run()
 	}()
 
-	// Helps handle the timeout funtionality
+	// Helps handle the status of the job
+	// handles various scenarios like timeout, completion, and error
 loop:
 	for {
 		select {
@@ -37,9 +45,13 @@ loop:
 			// If the timeout is reached
 			status = JobTimeOut
 			break loop
-		case <-taskComplete:
-			// Everything went smoothly
-			status = JobCompleted
+		case outcome = <-outcomeCh:
+			if outcome.Err != nil {
+				status = JobError
+			} else {
+				// Everything went smoothly
+				status = JobCompleted
+			}
 			break loop
 		case <-taskError:
 			// Signalled from defer func
@@ -48,26 +60,36 @@ loop:
 		}
 	}
 
-	// If an error was returned by the user
-	// change the JobState to reflect it
-	if outcome.Err != nil {
-		status = JobError
+	// Handle task retry
+	if status == JobError && job.task.retry.Load() > 0 {
+		job.task.DecrementRetry()
+
+		ctx, cancel := context.WithTimeout(context.TODO(), job.task.timeout)
+		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), withJobRetry())
+
+		// TODO: introduce delay for retry
+		queue.Enqueue(retryJob)
+		store.Set(job.id, Result{Status: JobRetry})
+
+		return
 	}
 
 	store.Set(job.id, Result{Outcome: outcome, Status: status})
 	job.done <- struct{}{}
 }
 
-func worker(queue *Queue, store *Store) {
+func worker(id int, queue *Queue, store *Store) {
 	for job := range queue.jobs {
-		handleJob(store, job)
+		queue.count.Add(-1)
+
+		handleJob(id, queue, store, job)
 	}
 }
 
 func StartWorker(queue *Queue, store *Store) {
 	const numWorkers = 10
 
-	for range numWorkers {
-		go worker(queue, store)
+	for id := range numWorkers {
+		go worker(id, queue, store)
 	}
 }
