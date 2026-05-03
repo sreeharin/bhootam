@@ -18,27 +18,28 @@ type Outcome struct {
 // Task is an abstraction layer
 // We expect the user functions to be wrapped inside Task
 type Task struct {
-	Function Func
-	Args     Args
-	Timeout  time.Duration
-	Retry    atomic.Int32
+	function Func
+	args     Args
+	timeout  time.Duration
+	retry    atomic.Int32
 }
 
 // Run executes the function with the provided arguments
 func (t *Task) Run() Outcome {
-	// res := make(chan Outcome, 1)
-	// res <- t.Function(t.Args)
-	return t.Function(t.Args)
-	// return res
+	return t.function(t.args)
 }
 
+// DecrementRetry reduces the retry count
+// if the number is 0, we stop retrying
 func (t *Task) DecrementRetry() {
-	t.Retry.Add(-1)
+	if t.retry.Load() > 0 {
+		t.retry.Add(-1)
+	}
 }
 
 func NewTask(function Func, options ...taskOption) *Task {
 	task := &Task{
-		Function: function,
+		function: function,
 	}
 
 	for _, opt := range options {
@@ -50,20 +51,20 @@ func NewTask(function Func, options ...taskOption) *Task {
 
 func withArgs(args Args) taskOption {
 	return func(t *Task) {
-		t.Args = args
+		t.args = args
 	}
 }
 
 func withTimeout(timeout time.Duration) taskOption {
 	return func(t *Task) {
-		t.Timeout = timeout
+		t.timeout = timeout
 	}
 }
 
 func withRetry(count int32) taskOption {
 	return func(t *Task) {
 		if count > 0 {
-			t.Retry.Add(count)
+			t.retry.Add(count)
 		}
 	}
 }

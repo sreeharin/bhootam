@@ -8,7 +8,7 @@ func sampleSumTask(args Args) Outcome {
 }
 
 func TestRun(t *testing.T) {
-	task := Task{Function: sampleSumTask, Args: Args{5, 5}}
+	task := Task{function: sampleSumTask, args: Args{5, 5}}
 	res := task.Run()
 	// res := <-outcome
 

@@ -1,12 +1,19 @@
 package bhootam
 
+import "context"
+
 // handleJob is the job runner
 // it's called by the worker goroutine
 func handleJob(id int, queue *Queue, store *Store, job *Job) {
 	defer job.ctxCancel()
 
-	// Acknowledge a worker has picked up the job
-	job.ack <- struct{}{}
+	// acknowledge a worker has picked up the job
+	// for retries it doesn't create an ack
+	// might change in the future
+	if !job.retry {
+		job.ack <- struct{}{}
+		close(job.ack)
+	}
 	store.Set(job.id, Result{Status: JobRunning})
 
 	var (
@@ -29,7 +36,8 @@ func handleJob(id int, queue *Queue, store *Store, job *Job) {
 		outcomeCh <- job.task.Run()
 	}()
 
-	// Helps handle the timeout funtionality
+	// Helps handle the status of the job
+	// handles various scenarios like timeout, completion, and error
 loop:
 	for {
 		select {
@@ -38,8 +46,12 @@ loop:
 			status = JobTimeOut
 			break loop
 		case outcome = <-outcomeCh:
-			// Everything went smoothly
-			status = JobCompleted
+			if outcome.Err != nil {
+				status = JobError
+			} else {
+				// Everything went smoothly
+				status = JobCompleted
+			}
 			break loop
 		case <-taskError:
 			// Signalled from defer func
@@ -48,35 +60,22 @@ loop:
 		}
 	}
 
-	// If an error was returned by the user
-	// change the JobState to reflect it
-	if outcome.Err != nil {
-		status = JobError
-	}
-
 	// Handle task retry
-	if status == JobError && job.task.Retry.Load() > 0 {
-		// job.task.DecrementRetry()
+	if status == JobError && job.task.retry.Load() > 0 {
+		job.task.DecrementRetry()
 
-		// ctx, cancel := context.WithTimeout(context.TODO(), job.task.Timeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), job.task.timeout)
+		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), setRetry())
 
-		// newJob := Job{
-		// 	ctx:       ctx,
-		// 	ctxCancel: cancel,
-		// 	id:        job.id,
-		// 	task:      job.task,
-		// 	done:      job.done,
-		// }
+		// TODO: introduce delay for retry
+		queue.Enqueue(retryJob)
+		store.Set(job.id, Result{Status: JobRetry})
 
-		// queue.jobs <- &newJob
-
-		// queue.count.Add(1)
-		// fmt.Println("Retry reached.")
-	} else {
-		store.Set(job.id, Result{Outcome: outcome, Status: status})
-		job.done <- struct{}{}
+		return
 	}
 
+	store.Set(job.id, Result{Outcome: outcome, Status: status})
+	job.done <- struct{}{}
 }
 
 func worker(id int, queue *Queue, store *Store) {

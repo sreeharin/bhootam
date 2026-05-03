@@ -2,10 +2,10 @@ package bhootam
 
 import (
 	"context"
+	"sync"
 )
 
 type jobOption func(*Job)
-
 type JobState string
 
 const (
@@ -29,7 +29,10 @@ type Job struct {
 	// done is used to infrom that the task has completed running
 	done chan struct{}
 
-	// mu sync.Mutex
+	// we won't send an ack if the job is being retried
+	retry bool
+
+	mu sync.Mutex
 }
 
 func NewJob(ctx context.Context, ctxCancel context.CancelFunc, id string, task *Task, options ...jobOption) *Job {
@@ -56,5 +59,14 @@ func withAck(ack chan struct{}) jobOption {
 func withDone(done chan struct{}) jobOption {
 	return func(j *Job) {
 		j.done = done
+	}
+}
+
+func setRetry() jobOption {
+	return func(j *Job) {
+		j.mu.Lock()
+		defer j.mu.Unlock()
+
+		j.retry = true
 	}
 }
