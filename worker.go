@@ -65,7 +65,7 @@ loop:
 		job.task.DecrementRetry()
 
 		ctx, cancel := context.WithTimeout(context.TODO(), job.task.timeout)
-		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), setRetry())
+		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), withJobRetry())
 
 		// TODO: introduce delay for retry
 		queue.Enqueue(retryJob)

@@ -62,7 +62,7 @@ func withDone(done chan struct{}) jobOption {
 	}
 }
 
-func setRetry() jobOption {
+func withJobRetry() jobOption {
 	return func(j *Job) {
 		j.mu.Lock()
 		defer j.mu.Unlock()

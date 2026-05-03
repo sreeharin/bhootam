@@ -82,7 +82,7 @@ func TestWithRetry(t *testing.T) {
 		return Outcome{Err: errors.New("Unexpected error")}
 	}
 
-	task := NewTask(sampleRetryTask, withRetry(retries))
+	task := NewTask(sampleRetryTask, withTaskRetry(retries))
 	_, ack, done := q.CreateJob(task)
 	<-ack
 

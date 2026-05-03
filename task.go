@@ -61,7 +61,7 @@ func withTimeout(timeout time.Duration) taskOption {
 	}
 }
 
-func withRetry(count int32) taskOption {
+func withTaskRetry(count int32) taskOption {
 	return func(t *Task) {
 		if count > 0 {
 			t.retry.Add(count)
