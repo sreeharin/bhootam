@@ -4,6 +4,8 @@ import (
 	"context"
 )
 
+type jobOption func(*Job)
+
 type JobState string
 
 const (
@@ -28,4 +30,31 @@ type Job struct {
 	done chan struct{}
 
 	// mu sync.Mutex
+}
+
+func NewJob(ctx context.Context, ctxCancel context.CancelFunc, id string, task *Task, options ...jobOption) *Job {
+	job := &Job{
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
+		id:        id,
+		task:      task,
+	}
+
+	for _, opt := range options {
+		opt(job)
+	}
+
+	return job
+}
+
+func withAck(ack chan struct{}) jobOption {
+	return func(j *Job) {
+		j.ack = ack
+	}
+}
+
+func withDone(done chan struct{}) jobOption {
+	return func(j *Job) {
+		j.done = done
+	}
 }

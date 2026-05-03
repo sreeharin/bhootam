@@ -14,7 +14,7 @@ func TestAddTask(t *testing.T) {
 	task := NewTask(sampleTestTask)
 
 	go func() {
-		q.AddTask(task)
+		q.CreateJob(task)
 	}()
 
 	job := <-q.jobs

@@ -1,21 +1,8 @@
 package bhootam
 
-import (
-	"context"
-	"fmt"
-)
-
 // handleJob is the job runner
 // it's called by the worker goroutine
-func handleJob(queue *Queue, store *Store, job *Job) {
-	if !store.Acquire(job.id) {
-		return
-	}
-
-	defer store.Release(job.id)
-
-	fmt.Println("attempt ", job.task.Retry.Load())
-
+func handleJob(id int, queue *Queue, store *Store, job *Job) {
 	defer job.ctxCancel()
 
 	// Acknowledge a worker has picked up the job
@@ -69,40 +56,41 @@ loop:
 
 	// Handle task retry
 	if status == JobError && job.task.Retry.Load() > 0 {
-		job.task.DecrementRetry()
+		// job.task.DecrementRetry()
 
-		ctx, cancel := context.WithTimeout(context.TODO(), job.task.Timeout)
+		// ctx, cancel := context.WithTimeout(context.TODO(), job.task.Timeout)
 
-		newJob := Job{
-			ctx:       ctx,
-			ctxCancel: cancel,
-			id:        job.id,
-			task:      job.task,
-			done:      job.done,
-		}
+		// newJob := Job{
+		// 	ctx:       ctx,
+		// 	ctxCancel: cancel,
+		// 	id:        job.id,
+		// 	task:      job.task,
+		// 	done:      job.done,
+		// }
 
-		queue.jobs <- &newJob
+		// queue.jobs <- &newJob
 
-		queue.count.Add(1)
-		return
+		// queue.count.Add(1)
+		// fmt.Println("Retry reached.")
+	} else {
+		store.Set(job.id, Result{Outcome: outcome, Status: status})
+		job.done <- struct{}{}
 	}
 
-	store.Set(job.id, Result{Outcome: outcome, Status: status})
-	job.done <- struct{}{}
 }
 
-func worker(queue *Queue, store *Store) {
+func worker(id int, queue *Queue, store *Store) {
 	for job := range queue.jobs {
 		queue.count.Add(-1)
 
-		handleJob(queue, store, job)
+		handleJob(id, queue, store, job)
 	}
 }
 
 func StartWorker(queue *Queue, store *Store) {
 	const numWorkers = 10
 
-	for range numWorkers {
-		go worker(queue, store)
+	for id := range numWorkers {
+		go worker(id, queue, store)
 	}
 }

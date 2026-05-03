@@ -54,7 +54,7 @@ func TestHandleJob(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			task := NewTask(tt.function, withArgs(tt.args), withTimeout(tt.timeout))
 
-			id, _, done := q.AddTask(task)
+			id, _, done := q.CreateJob(task)
 			<-done
 
 			if res, err := store.Get(id); err != nil {
@@ -74,7 +74,7 @@ func TestHandleJob(t *testing.T) {
 
 func TestWithRetry(t *testing.T) {
 	var retries int32
-	retries = 1
+	retries = 4
 	var attempts atomic.Int32
 
 	sampleRetryTask := func(args Args) Outcome {
@@ -83,7 +83,7 @@ func TestWithRetry(t *testing.T) {
 	}
 
 	task := NewTask(sampleRetryTask, withRetry(retries))
-	_, ack, done := q.AddTask(task)
+	_, ack, done := q.CreateJob(task)
 	<-ack
 
 	// Job was taken from the queue by a worker

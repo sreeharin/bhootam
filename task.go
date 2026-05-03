@@ -1,14 +1,13 @@
 package bhootam
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
 
 type Args []any
 type Func func(Args) Outcome
-type option func(*Task)
+type taskOption func(*Task)
 
 // Outcome is the return value we expect from a function
 type Outcome struct {
@@ -27,7 +26,6 @@ type Task struct {
 
 // Run executes the function with the provided arguments
 func (t *Task) Run() Outcome {
-	fmt.Println("Running task")
 	// res := make(chan Outcome, 1)
 	// res <- t.Function(t.Args)
 	return t.Function(t.Args)
@@ -38,7 +36,7 @@ func (t *Task) DecrementRetry() {
 	t.Retry.Add(-1)
 }
 
-func NewTask(function Func, options ...option) *Task {
+func NewTask(function Func, options ...taskOption) *Task {
 	task := &Task{
 		Function: function,
 	}
@@ -50,19 +48,19 @@ func NewTask(function Func, options ...option) *Task {
 	return task
 }
 
-func withArgs(args Args) option {
+func withArgs(args Args) taskOption {
 	return func(t *Task) {
 		t.Args = args
 	}
 }
 
-func withTimeout(timeout time.Duration) option {
+func withTimeout(timeout time.Duration) taskOption {
 	return func(t *Task) {
 		t.Timeout = timeout
 	}
 }
 
-func withRetry(count int32) option {
+func withRetry(count int32) taskOption {
 	return func(t *Task) {
 		if count > 0 {
 			t.Retry.Add(count)
