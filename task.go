@@ -22,6 +22,7 @@ type Task struct {
 	args     Args
 	timeout  time.Duration
 	retry    atomic.Int32
+	maxRetry int
 }
 
 // Run executes the function with the provided arguments
@@ -65,6 +66,7 @@ func withTaskRetry(count int32) taskOption {
 	return func(t *Task) {
 		if count > 0 {
 			t.retry.Add(count)
+			t.maxRetry = int(count)
 		}
 	}
 }

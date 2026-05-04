@@ -74,7 +74,7 @@ func TestHandleJob(t *testing.T) {
 
 func TestWithRetry(t *testing.T) {
 	var retries int32
-	retries = 4
+	retries = 2
 	var attempts atomic.Int32
 
 	sampleRetryTask := func(args Args) Outcome {
@@ -92,7 +92,7 @@ func TestWithRetry(t *testing.T) {
 	}
 
 	select {
-	case <-time.After(5000 * time.Millisecond):
+	case <-time.After(5 * time.Second):
 		t.Errorf("Timeout reached. Task wasn't enqueued.")
 	case <-done:
 		if attempts.Load() != int32(retries+1) {

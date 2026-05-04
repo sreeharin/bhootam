@@ -1,6 +1,30 @@
 package bhootam
 
-import "context"
+import (
+	"context"
+	"time"
+
+	"golang.org/x/exp/rand"
+)
+
+const (
+	Delay    = 500 * time.Millisecond
+	MaxDelay = 1 * time.Minute
+)
+
+// retryBackoff implements exponential backoff strategy
+func retryBackoff(queue *Queue, store *Store, job *Job, attempt int) {
+	base := Delay * time.Duration(1<<attempt)
+
+	if base > MaxDelay {
+		base = MaxDelay
+	}
+
+	delay := time.Duration(rand.Int63n(int64(base)))
+
+	time.Sleep(delay)
+	queue.Enqueue(job)
+}
 
 // handleJob is the job runner
 // it's called by the worker goroutine
@@ -67,9 +91,9 @@ loop:
 		ctx, cancel := context.WithTimeout(context.TODO(), job.task.timeout)
 		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), withJobRetry())
 
-		// TODO: introduce delay for retry
-		queue.Enqueue(retryJob)
 		store.Set(job.id, Result{Status: JobRetry})
+		attempt := job.task.maxRetry - int(job.task.retry.Load()+1)
+		go retryBackoff(queue, store, retryJob, attempt)
 
 		return
 	}
