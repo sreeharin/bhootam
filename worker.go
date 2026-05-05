@@ -89,7 +89,7 @@ loop:
 		job.task.DecrementRetry()
 
 		ctx, cancel := context.WithTimeout(context.TODO(), job.task.timeout)
-		retryJob := NewJob(ctx, cancel, job.id, job.task, withDone(job.done), withJobRetry())
+		retryJob := NewJob(ctx, cancel, job.id, job.task, WithDone(job.done), WithJobRetry())
 
 		store.Set(job.id, Result{Status: JobRetry})
 		attempt := job.task.maxRetry - int(job.task.retry.Load()+1)

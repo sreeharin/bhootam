@@ -52,7 +52,7 @@ func TestHandleJob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			task := NewTask(tt.function, withArgs(tt.args), withTimeout(tt.timeout))
+			task := NewTask(tt.function, WithArgs(tt.args), WithTimeout(tt.timeout))
 
 			id, _, done := q.CreateJob(task)
 			<-done
@@ -82,7 +82,7 @@ func TestWithRetry(t *testing.T) {
 		return Outcome{Err: errors.New("Unexpected error")}
 	}
 
-	task := NewTask(sampleRetryTask, withTaskRetry(retries))
+	task := NewTask(sampleRetryTask, WithTaskRetry(retries))
 	_, ack, done := q.CreateJob(task)
 	<-ack
 

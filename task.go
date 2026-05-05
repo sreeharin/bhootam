@@ -50,19 +50,19 @@ func NewTask(function Func, options ...taskOption) *Task {
 	return task
 }
 
-func withArgs(args Args) taskOption {
+func WithArgs(args Args) taskOption {
 	return func(t *Task) {
 		t.args = args
 	}
 }
 
-func withTimeout(timeout time.Duration) taskOption {
+func WithTimeout(timeout time.Duration) taskOption {
 	return func(t *Task) {
 		t.timeout = timeout
 	}
 }
 
-func withTaskRetry(count int32) taskOption {
+func WithTaskRetry(count int32) taskOption {
 	return func(t *Task) {
 		if count > 0 {
 			t.retry.Add(count)

@@ -34,7 +34,7 @@ func (q *Queue) CreateJob(task *Task) (string, <-chan struct{}, <-chan struct{})
 
 	ctx, cancel := context.WithTimeout(context.TODO(), task.timeout)
 
-	job := NewJob(ctx, cancel, id, task, withAck(ack), withDone(done))
+	job := NewJob(ctx, cancel, id, task, WithAck(ack), WithDone(done))
 	q.Enqueue(job)
 
 	return id, ack, done

@@ -50,19 +50,19 @@ func NewJob(ctx context.Context, ctxCancel context.CancelFunc, id string, task *
 	return job
 }
 
-func withAck(ack chan struct{}) jobOption {
+func WithAck(ack chan struct{}) jobOption {
 	return func(j *Job) {
 		j.ack = ack
 	}
 }
 
-func withDone(done chan struct{}) jobOption {
+func WithDone(done chan struct{}) jobOption {
 	return func(j *Job) {
 		j.done = done
 	}
 }
 
-func withJobRetry() jobOption {
+func WithJobRetry() jobOption {
 	return func(j *Job) {
 		j.mu.Lock()
 		defer j.mu.Unlock()
