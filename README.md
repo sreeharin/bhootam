@@ -9,6 +9,8 @@ Bhootam is an experimental, in-memory task queue library written in Go. It's des
 - **Retry Mechanism**: Automatic retry for failed jobs with configurable retry counts.
 - **Panic Recovery**: Workers recover from panics in task functions.
 
+## Basic usage
+
 ## License
 
 See LICENSE file for details.
