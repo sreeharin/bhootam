@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"golang.org/x/exp/rand"
+	"math/rand/v2"
 )
 
 const (
@@ -20,7 +20,7 @@ func retryBackoff(queue *Queue, store *Store, job *Job, attempt int) {
 		base = MaxDelay
 	}
 
-	delay := time.Duration(rand.Int63n(int64(base)))
+	delay := time.Duration(rand.Int64N(int64(base)))
 
 	time.Sleep(delay)
 	queue.Enqueue(job)
@@ -28,7 +28,7 @@ func retryBackoff(queue *Queue, store *Store, job *Job, attempt int) {
 
 // handleJob is the job runner
 // it's called by the worker goroutine
-func handleJob(id int, queue *Queue, store *Store, job *Job) {
+func handleJob(queue *Queue, store *Store, job *Job) {
 	defer job.ctxCancel()
 
 	// acknowledge a worker has picked up the job
@@ -102,18 +102,18 @@ loop:
 	job.done <- struct{}{}
 }
 
-func worker(id int, queue *Queue, store *Store) {
+func worker(queue *Queue, store *Store) {
 	for job := range queue.jobs {
 		queue.count.Add(-1)
 
-		handleJob(id, queue, store, job)
+		handleJob(queue, store, job)
 	}
 }
 
 func StartWorker(queue *Queue, store *Store) {
 	const numWorkers = 10
 
-	for id := range numWorkers {
-		go worker(id, queue, store)
+	for range numWorkers {
+		go worker(queue, store)
 	}
 }
